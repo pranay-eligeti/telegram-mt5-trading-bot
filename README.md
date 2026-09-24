@@ -1,184 +1,131 @@
-# 📈 Telegram-to-MetaTrader5 Trading Bot
+# 📈 Event-Driven Trading Signal Parser
 
-> An automated trading bot that listens to a Telegram prop trading channel, parses mixed Hindi/English signals using the Anthropic Claude API, and executes trades directly on MetaTrader5 — fully hands-free.
+> A sanitized, runnable Python portfolio project demonstrating bursty message accumulation, semi-structured signal parsing, typed events, optional LLM extraction, and paper-only execution.
 
-![Python](https://img.shields.io/badge/Python-3.10+-blue?logo=python)
-![Anthropic](https://img.shields.io/badge/Anthropic-Claude%20API-blueviolet)
-![MetaTrader5](https://img.shields.io/badge/MetaTrader5-Trading-green)
-![Telethon](https://img.shields.io/badge/Telethon-Telegram%20API-blue)
+[![Python CI](https://github.com/pranay-eligeti/telegram-mt5-trading-bot/actions/workflows/ci.yml/badge.svg)](https://github.com/pranay-eligeti/telegram-mt5-trading-bot/actions/workflows/ci.yml)
+![Python](https://img.shields.io/badge/Python-3.12+-blue?logo=python)
+![Pydantic](https://img.shields.io/badge/Pydantic-typed%20models-E92063)
+![Claude](https://img.shields.io/badge/Claude-optional%20LLM-purple)
 
----
+## What this repository demonstrates
 
-## What It Does
+I have worked on event-driven automation where messages arrive rapidly, contain semi-structured information, and need to be converted into reliable machine-readable events.
 
-Monitors a private Telegram trading channel for BTC/USDT and Gold signals (sent in a mix of Hindi and English), intelligently parses them using Claude API, and automatically places trades on a MetaTrader5 prop account — targeting TP3 (the furthest take profit) for maximum gain per trade.
+This repository is the **public, sanitized implementation of that engineering pattern**. It contains synthetic signal data and a paper-only execution adapter. It does **not** connect to a live trading account, brokerage, Telegram channel, or MetaTrader 5 terminal.
 
----
+### Engineering capabilities
 
-## The Problem It Solves
+- Async message accumulation
+- Semi-structured text parsing
+- Typed events with **Pydantic**
+- Optional **Anthropic Claude API** extraction
+- Explicit validation of required fields
+- Paper/simulation execution boundary
+- Unit tests and GitHub Actions CI
 
-Prop trading signal channels send signals rapidly, often in bursts of multiple messages, in informal mixed-language text. Manual execution is too slow and error-prone. This bot:
+## Architecture
 
-- Catches every signal instantly
-- Handles message bursts (batching via `MessageAccumulator`)
-- Understands informal Hindi/English mixed text
-- Executes trades in milliseconds
+~~~text
+Message fragments
+      |
+      v
+MessageAccumulator
+      |
+      v
+Signal parser
+      |
+      v
+Pydantic TradeSignal
+      |
+      +----> optional Claude extraction
+      |
+      v
+PaperExecutor
+      |
+      v
+SimulatedOrder
+~~~
 
----
+See docs/architecture.md for the design notes.
 
-## How It Works
+## Repository structure
 
-```
-Telegram Channel (Hindi/English signals)
-        │
-        ▼
-Telethon listener (real-time message capture)
-        │
-        ▼
-MessageAccumulator (batches rapid-fire messages, 2s window)
-        │
-        ▼
-Anthropic Claude API
-  Prompt: "Extract trade parameters from this signal text"
-  Output: {
-    instrument: "GOLD",
-    direction: "BUY",
-    entry: 2345.50,
-    tp1: 2350.00,
-    tp2: 2355.00,
-    tp3: 2362.00,   ← bot targets this
-    sl: 2338.00
-  }
-        │
-        ▼
-MetaTrader5 Python Library
-  → Places order at entry price
-  → Sets SL and TP3
-  → Confirms execution
-        │
-        ▼
-Trade Active on FundedFirm Prop Account
-```
-
----
-
-## Tech Stack
-
-| Tool                       | Purpose                            |
-| -------------------------- | ---------------------------------- |
-| Python 3.10+               | Core bot logic                     |
-| Telethon                   | Telegram MTProto API client        |
-| Anthropic Claude API       | Signal parsing (Hindi/English NLP) |
-| MetaTrader5 Python library | Trade execution                    |
-| asyncio                    | Async message handling             |
-| MessageAccumulator         | Custom class for burst batching    |
-
----
-
-## Key Design Decisions
-
-**Why Claude API for parsing?**
-Signal text is informal, multilingual, and inconsistent. Regex fails on varied formats. Claude reliably extracts structured trade data from any phrasing.
-
-**Why target only TP3?**
-TP3 is the furthest take profit — maximizes gain per trade on a prop account where drawdown limits matter more than win rate.
-
-**Why MessageAccumulator?**
-Signal channels often send a trade in 3-5 rapid messages (entry in one, TPs in another, SL in another). The accumulator batches all messages within a 2-second window before sending to Claude, ensuring complete signal context.
-
----
-
-## Project Structure
-
-```
+~~~text
 telegram-mt5-trading-bot/
+├── .github/workflows/ci.yml
+├── docs/architecture.md
+├── sample_data/signal.txt
 ├── src/
-│   ├── bot.py                  # Main entry point
-│   ├── accumulator.py          # MessageAccumulator class
-│   ├── signal_parser.py        # Claude API integration
-│   ├── trader.py               # MT5 order execution
-│   └── utils.py                # Logging, helpers
+│   ├── __init__.py
+│   ├── accumulator.py
+│   ├── executor.py
+│   ├── main.py
+│   ├── models.py
+│   └── signal_parser.py
+├── tests/test_signal.py
 ├── .env.example
-├── requirements.txt
-└── README.md
-```
+├── .gitignore
+├── LICENSE
+├── README.md
+└── requirements.txt
+~~~
 
----
+## Quick start
 
-## Setup
-
-### 1. Clone the repo
-
-```bash
+~~~bash
 git clone https://github.com/pranay-eligeti/telegram-mt5-trading-bot.git
 cd telegram-mt5-trading-bot
-```
+python -m venv .venv
 
-### 2. Install dependencies
+# Windows
+.venv\\Scripts\\activate
 
-```bash
+# macOS/Linux
+source .venv/bin/activate
+
 pip install -r requirements.txt
-```
+~~~
 
-### 3. Configure environment
+### Run the synthetic demo
 
-```bash
-cp .env.example .env
-# Fill in all credentials
-```
+~~~bash
+python -m src.main --input sample_data/signal.txt
+~~~
 
-### 4. Run the bot
+The command parses the synthetic message fragments and prints a **SimulatedOrder**. No live order is created.
 
-```bash
-python src/bot.py
-```
+### Run tests
 
----
+~~~bash
+pytest -q
+~~~
 
-## Environment Variables
+## Example event
 
-```env
-# .env.example
+The fixture represents a synthetic signal containing an instrument, direction, entry, stop-loss, and take-profit levels. The parser converts those fragments into a typed `TradeSignal` object before the paper executor produces a simulated order.
 
-# Telegram API (get from my.telegram.org)
-TELEGRAM_API_ID=your_api_id
-TELEGRAM_API_HASH=your_api_hash
-TELEGRAM_CHANNEL_ID=your_channel_id
+## LLM extraction
 
-# Anthropic
-ANTHROPIC_API_KEY=your_anthropic_api_key
+`parse_with_claude(...)` is an optional provider for less-structured messages. Configure `ANTHROPIC_API_KEY` locally; CI never calls the external model.
 
-# MetaTrader5
-MT5_LOGIN=your_mt5_account_number
-MT5_PASSWORD=your_mt5_password
-MT5_SERVER=your_broker_server
+The LLM prompt explicitly asks the model to use `null` for missing values and never invent prices.
 
-# Bot config
-ACCUMULATOR_WINDOW_SECONDS=2
-TARGET_TP=3
-```
+## Safety boundary
 
----
+The public implementation intentionally stops at a **paper/simulation layer**. It contains no broker credentials, live execution code, private channel identifiers, or automated order placement.
 
-## Requirements
+For financial software, any live deployment requires separate risk controls, authorization, testing, monitoring, and compliance review. This repository is a software-engineering demonstration, not trading advice or a recommendation to use a particular strategy.
 
-```
-telethon>=1.34.0
-anthropic>=0.25.0
-MetaTrader5>=5.0.45
-python-dotenv>=1.0.0
-```
+## Privacy and security
 
-> ⚠️ **Note:** MetaTrader5 Python library only works on Windows.
+Never commit Telegram session files, API credentials, broker credentials, account identifiers, private messages, or private trading-channel content.
 
----
+## Portfolio note
 
-## Disclaimer
-
-This bot is for educational and personal use only. Trading involves significant financial risk. Never use this on a live funded account without thorough testing. The author is not responsible for any financial losses.
-
----
+The value of this project is the engineering pipeline: **event ingestion → normalization → typed state → optional AI extraction → controlled action boundary**.
 
 ## Author
 
-**Pranay Eligeti** — [linkedin.com/in/pranay-eligeti](https://linkedin.com/in/pranay-eligeti)
+**Pranay Eligeti**
+
+[LinkedIn](https://www.linkedin.com/in/pranay-eligeti) · [GitHub](https://github.com/pranay-eligeti)
